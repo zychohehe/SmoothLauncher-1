@@ -1,0 +1,1 @@
+# Aturan default sudah cukup.

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root" android:layout_width="match_parent" android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/home" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <TextClock
+            android:id="@+id/clock" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal" android:format12Hour="h:mm" android:format24Hour="HH:mm"
+            android:fontFamily="sans-serif-thin" android:textColor="#FFFFFF" android:textSize="76sp"
+            android:shadowColor="#66000000" android:shadowRadius="8" />
+
+        <TextClock
+            android:id="@+id/date" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal" android:format12Hour="EEEE, d MMMM" android:format24Hour="EEEE, d MMMM"
+            android:textColor="#E6FFFFFF" android:textSize="16sp"
+            android:shadowColor="#66000000" android:shadowRadius="6" />
+
+        <TextView
+            android:id="@+id/searchBar" android:layout_width="match_parent" android:layout_height="48dp"
+            android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="24dp"
+            android:gravity="center_vertical" android:paddingStart="20dp" android:paddingEnd="20dp"
+            android:text="Cari aplikasi" android:textColor="#B3FFFFFF" android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/hint" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="32dp" android:gravity="center" android:padding="24dp"
+            android:text="Geser ke atas untuk membuka laci aplikasi.\nTahan lama sebuah aplikasi di laci untuk menambahkannya ke Home atau Dock."
+            android:textColor="#CCFFFFFF" android:textSize="14sp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/favorites" android:layout_width="match_parent" android:layout_height="0dp"
+            android:layout_weight="1" android:layout_marginTop="16dp"
+            android:clipToPadding="false" android:overScrollMode="never" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/dock" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal" android:layout_marginBottom="8dp"
+            android:padding="8dp" android:overScrollMode="never" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/drawer" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:visibility="invisible">
+
+        <EditText
+            android:id="@+id/query" android:layout_width="match_parent" android:layout_height="48dp"
+            android:layout_margin="12dp" android:paddingStart="16dp" android:paddingEnd="16dp"
+            android:hint="Cari aplikasi" android:imeOptions="actionGo" android:singleLine="true"
+            android:importantForAutofill="no" android:inputType="text|textNoSuggestions" android:textSize="16sp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/grid" android:layout_width="match_parent" android:layout_height="0dp"
+            android:layout_weight="1" android:clipToPadding="false" android:overScrollMode="ifContentScrolls" />
+    </LinearLayout>
+</FrameLayout>
