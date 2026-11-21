@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/root" android:layout_width="match_parent" android:layout_height="match_parent">
+    android:id="@+id/root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/scrim">
 
     <LinearLayout
         android:id="@+id/home" android:layout_width="match_parent" android:layout_height="match_parent"
@@ -9,19 +10,20 @@
         <TextClock
             android:id="@+id/clock" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal" android:format12Hour="h:mm" android:format24Hour="HH:mm"
-            android:fontFamily="sans-serif-thin" android:textColor="#FFFFFF" android:textSize="76sp"
-            android:shadowColor="#66000000" android:shadowRadius="8" />
+            android:fontFamily="sans-serif-light" android:textColor="#FFFFFF" android:textSize="84sp"
+            android:letterSpacing="-0.02" android:shadowColor="#55000000" android:shadowRadius="12" />
 
         <TextClock
             android:id="@+id/date" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal" android:format12Hour="EEEE, d MMMM" android:format24Hour="EEEE, d MMMM"
-            android:textColor="#E6FFFFFF" android:textSize="16sp"
-            android:shadowColor="#66000000" android:shadowRadius="6" />
+            android:fontFamily="sans-serif-medium" android:textColor="#F2FFFFFF" android:textSize="16sp"
+            android:shadowColor="#55000000" android:shadowRadius="8" />
 
         <TextView
-            android:id="@+id/searchBar" android:layout_width="match_parent" android:layout_height="48dp"
-            android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="24dp"
-            android:gravity="center_vertical" android:paddingStart="20dp" android:paddingEnd="20dp"
+            android:id="@+id/searchBar" android:layout_width="match_parent" android:layout_height="52dp"
+            android:layout_marginStart="20dp" android:layout_marginEnd="20dp" android:layout_marginTop="28dp"
+            android:gravity="center_vertical" android:paddingStart="18dp" android:paddingEnd="20dp"
+            android:drawableStart="@drawable/ic_search" android:drawablePadding="10dp" android:drawableTint="#B3FFFFFF"
             android:text="Cari aplikasi" android:textColor="#B3FFFFFF" android:textSize="16sp" />
 
         <TextView
@@ -32,27 +34,31 @@
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/favorites" android:layout_width="match_parent" android:layout_height="0dp"
-            android:layout_weight="1" android:layout_marginTop="16dp"
+            android:layout_weight="1" android:layout_marginTop="20dp"
             android:clipToPadding="false" android:overScrollMode="never" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/dock" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal" android:layout_marginBottom="8dp"
-            android:padding="8dp" android:overScrollMode="never" />
+            android:padding="10dp" android:overScrollMode="never" />
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/drawer" android:layout_width="match_parent" android:layout_height="match_parent"
         android:orientation="vertical" android:visibility="invisible">
 
+        <View
+            android:id="@+id/grabber" android:layout_width="40dp" android:layout_height="5dp"
+            android:layout_gravity="center_horizontal" android:background="@drawable/grabber" />
+
         <EditText
             android:id="@+id/query" android:layout_width="match_parent" android:layout_height="48dp"
-            android:layout_margin="12dp" android:paddingStart="16dp" android:paddingEnd="16dp"
+            android:layout_margin="14dp" android:paddingStart="18dp" android:paddingEnd="18dp"
             android:hint="Cari aplikasi" android:imeOptions="actionGo" android:singleLine="true"
             android:importantForAutofill="no" android:inputType="text|textNoSuggestions" android:textSize="16sp" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/grid" android:layout_width="match_parent" android:layout_height="0dp"
-            android:layout_weight="1" android:clipToPadding="false" android:overScrollMode="ifContentScrolls" />
+            android:layout_weight="1" android:clipToPadding="false" android:overScrollMode="never" />
     </LinearLayout>
 </FrameLayout>

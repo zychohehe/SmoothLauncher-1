@@ -3,6 +3,7 @@ package id.smooth.launcher.ui
 import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
@@ -27,6 +28,7 @@ import kotlinx.coroutines.withContext
 
 class SettingsActivity : ComponentActivity() {
     private lateinit var box: LinearLayout
+    private lateinit var cur: LinearLayout
 
     private val exportL = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) lifecycleScope.launch {
@@ -67,7 +69,8 @@ class SettingsActivity : ComponentActivity() {
 
     private fun build(p: Prefs) {
         box.removeAllViews()
-        text("Smooth Launcher", 28f, bold = true, top = 16)
+        cur = box
+        text("Smooth Launcher", 32f, bold = true, top = 16)
 
         section("Appearance")
         choice("Tema", listOf("Ikuti sistem", "Terang", "Gelap"), p.theme) { v -> save(true) { it.copy(theme = v) } }
@@ -108,22 +111,31 @@ class SettingsActivity : ComponentActivity() {
     private fun text(t: String, sp: Float, bold: Boolean = false, top: Int = 0) = box.addView(TextView(this).apply {
         text = t; textSize = sp; if (bold) setTypeface(typeface, Typeface.BOLD); setPadding(0, dp(top), 0, dp(4))
     })
-    private fun section(t: String) = box.addView(TextView(this).apply {
-        text = t.uppercase(); textSize = 12f; setTypeface(typeface, Typeface.BOLD); alpha = 0.6f; setPadding(0, dp(28), 0, dp(6))
-    })
-    private fun note(t: String) = box.addView(TextView(this).apply { text = t; textSize = 13f; alpha = 0.65f; setPadding(0, dp(6), 0, dp(6)) })
+    private fun section(t: String) {
+        box.addView(TextView(this).apply {
+            text = t.uppercase(); textSize = 12f; setTypeface(typeface, Typeface.BOLD); alpha = 0.6f
+            setPadding(dp(8), dp(24), 0, dp(8))
+        })
+        cur = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(4), dp(16), dp(4))
+            background = GradientDrawable().apply { setColor(0x1F808080); cornerRadius = dp(18).toFloat() }
+        }
+        box.addView(cur)
+    }
+    private fun note(t: String) = cur.addView(TextView(this).apply { text = t; textSize = 13f; alpha = 0.65f; setPadding(0, dp(6), 0, dp(6)) })
 
-    private fun action(t: String, onClick: () -> Unit) = box.addView(TextView(this).apply {
+    private fun action(t: String, onClick: () -> Unit) = cur.addView(TextView(this).apply {
         text = t; textSize = 16f; gravity = Gravity.CENTER_VERTICAL; minHeight = dp(48)
         setOnClickListener { onClick() }
     })
 
-    private fun toggle(t: String, v: Boolean, onChange: (Boolean) -> Unit) = box.addView(Switch(this).apply {
+    private fun toggle(t: String, v: Boolean, onChange: (Boolean) -> Unit) = cur.addView(Switch(this).apply {
         text = t; isChecked = v; textSize = 16f; minHeight = dp(48)
         setOnCheckedChangeListener { _, c -> onChange(c) }
     })
 
-    private fun choice(t: String, opts: List<String>, sel: Int, onPick: (Int) -> Unit) = box.addView(TextView(this).apply {
+    private fun choice(t: String, opts: List<String>, sel: Int, onPick: (Int) -> Unit) = cur.addView(TextView(this).apply {
         text = "$t: ${opts[sel]}"; textSize = 16f; gravity = Gravity.CENTER_VERTICAL; minHeight = dp(48)
         setOnClickListener {
             AlertDialog.Builder(this@SettingsActivity).setTitle(t)
@@ -141,7 +153,7 @@ class SettingsActivity : ComponentActivity() {
                 override fun onStopTrackingTouch(s: SeekBar) { onCommit(s.progress + min) }
             })
         }
-        box.addView(label); box.addView(bar)
+        cur.addView(label); cur.addView(bar)
     }
 
     private fun hiddenDialog(p: Prefs) {

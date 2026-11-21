@@ -2,12 +2,14 @@ package id.smooth.launcher.ui
 
 import android.annotation.SuppressLint
 import android.graphics.Color
+import android.graphics.Typeface
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -44,7 +46,7 @@ class AppAdapter(
         val c = parent.context
         val icon = ImageView(c).apply { scaleType = ImageView.ScaleType.FIT_CENTER }
         val label = TextView(c).apply {
-            maxLines = 1; ellipsize = TextUtils.TruncateAt.END; gravity = Gravity.CENTER
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL); maxLines = 1; ellipsize = TextUtils.TruncateAt.END; gravity = Gravity.CENTER
         }
         val root = LinearLayout(c).apply {
             orientation = LinearLayout.VERTICAL
@@ -61,7 +63,7 @@ class AppAdapter(
         root.setOnTouchListener { v, e ->
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> v.animate().scaleX(0.92f).scaleY(0.92f).setDuration(90).start()
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> v.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> v.animate().scaleX(1f).scaleY(1f).setDuration(300).setInterpolator(OvershootInterpolator(3f)).start()
             }
             false
         }

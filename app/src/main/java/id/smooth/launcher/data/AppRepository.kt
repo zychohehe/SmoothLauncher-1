@@ -14,7 +14,7 @@ import android.os.UserHandle
 import android.util.LruCache
 import android.view.View
 import android.widget.Toast
-import androidx.core.graphics.drawable.toBitmap
+import id.smooth.launcher.util.IconRenderer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -75,17 +75,19 @@ class AppRepository(private val ctx: Context, private val scope: CoroutineScope)
 
     suspend fun icon(app: AppInfo, px: Int): Bitmap = cachedIcon(app, px) ?: withContext(Dispatchers.IO) {
         val d = infos[app.key]?.getIcon(0) ?: ctx.packageManager.defaultActivityIcon
-        d.toBitmap(px, px).also { icons.put("${app.key}@$px", it) }
+        IconRenderer.render(d, px).also { icons.put("${app.key}@$px", it) }
     }
 
-    fun launch(app: AppInfo, source: View?) {
+    fun launch(app: AppInfo, source: View?): Boolean {
         val cn = ComponentName(app.packageName, app.className)
         val opts = source?.let { ActivityOptions.makeScaleUpAnimation(it, 0, 0, it.width, it.height).toBundle() }
         val bounds = source?.let { v -> Rect().also { v.getGlobalVisibleRect(it) } }
         try {
             la.startMainActivity(cn, user, bounds, opts)
+            return true
         } catch (e: Exception) {
             Toast.makeText(ctx, "Tidak dapat membuka ${app.label}", Toast.LENGTH_SHORT).show()
+            return false
         }
     }
 

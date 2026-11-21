@@ -7,7 +7,10 @@ import android.os.Bundle
 import android.view.GestureDetector
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
+import android.view.VelocityTracker
 import android.view.View
+import android.view.ViewConfiguration
+import android.view.animation.DecelerateInterpolator
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -60,6 +63,16 @@ class MainActivity : ComponentActivity() {
     private var allApps = emptyList<AppInfo>()
     private var drawerOpen = false
     private var drawerAnim: SpringAnimation? = null
+    private var launched = false
+    private var lastBlur = 0
+
+    // state drag
+    private var downX = 0f
+    private var downY = 0f
+    private var dragging = false
+    private var dragStartDy = 0f
+    private var trans0 = 0f
+    private var vt: VelocityTracker? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,10 +82,9 @@ class MainActivity : ComponentActivity() {
         favorites = findViewById(R.id.favorites); dock = findViewById(R.id.dock)
         hint = findViewById(R.id.hint); searchBar = findViewById(R.id.searchBar)
 
-        val repo = sm.repo
-        drawerAdapter = AppAdapter(repo, lifecycleScope, false, { a, v -> repo.launch(a, v) }, { a, v -> showAppMenu(a, v, DRAWER) })
-        favAdapter = AppAdapter(repo, lifecycleScope, false, { a, v -> repo.launch(a, v) }, { a, v -> showAppMenu(a, v, HOME) })
-        dockAdapter = AppAdapter(repo, lifecycleScope, true, { a, v -> repo.launch(a, v) }, { a, v -> showAppMenu(a, v, DOCK) })
+        drawerAdapter = AppAdapter(sm.repo, lifecycleScope, false, { a, v -> launchApp(a, v) }, { a, v -> showAppMenu(a, v, DRAWER) })
+        favAdapter = AppAdapter(sm.repo, lifecycleScope, false, { a, v -> launchApp(a, v) }, { a, v -> showAppMenu(a, v, HOME) })
+        dockAdapter = AppAdapter(sm.repo, lifecycleScope, true, { a, v -> launchApp(a, v) }, { a, v -> showAppMenu(a, v, DOCK) })
 
         grid.layoutManager = GridLayoutManager(this, 4); grid.adapter = drawerAdapter
         favorites.layoutManager = GridLayoutManager(this, 4); favorites.adapter = favAdapter; favorites.itemAnimator = null
@@ -81,7 +93,7 @@ class MainActivity : ComponentActivity() {
 
         query.doAfterTextChanged { renderDrawer() }
         query.setOnEditorActionListener { _, _, _ ->
-            drawerAdapter.currentList.firstOrNull()?.let { repo.launch(it, null) }
+            drawerAdapter.currentList.firstOrNull()?.let { launchApp(it, null) }
             true
         }
         searchBar.setOnClickListener { animateDrawer(open = true, focus = true) }
@@ -92,7 +104,7 @@ class MainActivity : ComponentActivity() {
             val s = w.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             val ime = w.getInsets(WindowInsetsCompat.Type.ime())
             home.setPadding(s.left + dp(8), s.top + dp(24), s.right + dp(8), s.bottom + dp(8))
-            drawer.setPadding(s.left + dp(8), s.top + dp(16), s.right + dp(8), maxOf(s.bottom, ime.bottom) + dp(8))
+            drawer.setPadding(s.left + dp(8), s.top + dp(12), s.right + dp(8), maxOf(s.bottom, ime.bottom) + dp(8))
             w
         }
 
@@ -102,7 +114,7 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(sm.store.prefs, repo.apps) { p, a -> p to a }.collect { (p, a) ->
+                combine(sm.store.prefs, sm.repo.apps) { p, a -> p to a }.collect { (p, a) ->
                     prefs = p; allApps = a
                     applyPrefs(); render()
                 }
@@ -120,6 +132,44 @@ class MainActivity : ComponentActivity() {
         if (drawerOpen) animateDrawer(open = false, instant = true)
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (launched) { launched = false; playReturn() }
+    }
+
+    // ---------- Buka / tutup aplikasi ----------
+    private fun dur(ms: Long): Long = (ms * 100f / prefs.animPercent).toLong()
+
+    private fun launchApp(app: AppInfo, v: View?) {
+        val still = motionScale() == 0f
+        val target: View = if (drawerOpen) drawer else home
+        if (!still) {
+            target.animate().cancel()
+            target.animate().scaleX(1.12f).scaleY(1.12f).alpha(0f).setDuration(dur(280))
+                .setInterpolator(DecelerateInterpolator(1.5f)).start()   // layar "zoom ke arah pengguna"
+        }
+        if (sm.repo.launch(app, v)) launched = true
+        else if (!still) target.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(dur(200)).start()
+    }
+
+    private fun playReturn() {
+        home.animate().cancel()
+        if (motionScale() == 0f) { home.alpha = 1f; home.scaleX = 1f; home.scaleY = 1f; return }
+        home.scaleX = 1.12f; home.scaleY = 1.12f; home.alpha = 0f
+        home.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(dur(420))
+            .setInterpolator(DecelerateInterpolator(1.8f)).start()
+        stagger(favorites); stagger(dock)
+    }
+
+    private fun stagger(rv: RecyclerView) {
+        for (i in 0 until rv.childCount) {
+            val c = rv.getChildAt(i)
+            c.translationY = dp(28).toFloat(); c.alpha = 0f
+            c.animate().translationY(0f).alpha(1f).setStartDelay(40L + i * 18L).setDuration(dur(380))
+                .setInterpolator(DecelerateInterpolator(2f)).start()
+        }
+    }
+
     // ---------- Render ----------
     private fun applyPrefs() {
         val dark = Palette.isDark(this, prefs)
@@ -129,10 +179,10 @@ class MainActivity : ComponentActivity() {
         drawerAdapter.style = AppAdapter.Style(iconPx, prefs.labelSp, Palette.text(dark))
         (favorites.layoutManager as GridLayoutManager).spanCount = prefs.homeCols
         (grid.layoutManager as GridLayoutManager).spanCount = prefs.drawerCols
-        drawer.background = glass(this, Palette.drawerGlass(dark), 28f, topOnly = true)
-        dock.background = glass(this, Palette.barGlass(dark), 28f)
-        searchBar.background = glass(this, Palette.barGlass(dark), 24f)
-        query.background = glass(this, Palette.field(dark), 14f)
+        drawer.background = glass(this, Palette.drawerGlass(dark), 32f, topOnly = true)
+        dock.background = glass(this, Palette.barGlass(dark), 34f)
+        searchBar.background = glass(this, Palette.barGlass(dark), 26f)
+        query.background = glass(this, Palette.field(dark), 16f)
         query.setTextColor(Palette.text(dark)); query.setHintTextColor(Palette.hint(dark))
     }
 
@@ -151,20 +201,24 @@ class MainActivity : ComponentActivity() {
         drawerAdapter.submitList(SearchEngine.filter(visible, query.text.toString()))
     }
 
-    // ---------- Laci (spring) ----------
-    private fun animateDrawer(open: Boolean, focus: Boolean = false, instant: Boolean = false) {
+    // ---------- Laci: spring + drag mengikuti jari ----------
+    private fun progress(): Float = (1f - drawer.translationY / root.height.coerceAtLeast(1)).coerceIn(0f, 1f)
+
+    private fun animateDrawer(open: Boolean, focus: Boolean = false, instant: Boolean = false, velocity: Float = 0f) {
         drawerOpen = open
         val target = if (open) 0f else root.height.toFloat()
-        drawerAnim?.cancel()
-        if (open) { drawer.visibility = View.VISIBLE; setBlur(true) } else hideIme()
+        drawerAnim?.cancel(); drawer.animate().cancel()
+        if (open) drawer.visibility = View.VISIBLE else hideIme()
         if (instant || motionScale() == 0f) {
             drawer.translationY = target; onProgress(); finishDrawer(open, focus); return
         }
         drawerAnim = SpringAnimation(drawer, DynamicAnimation.TRANSLATION_Y).apply {
             setSpring(SpringForce(target).apply {
                 dampingRatio = 0.9f
-                stiffness = (600f * prefs.animPercent / 100f).coerceIn(150f, 1500f)
+                stiffness = (500f * prefs.animPercent / 100f).coerceIn(150f, 1500f)
             })
+            setMinValue(0f)
+            setStartVelocity(velocity)
             addUpdateListener { _, _, _ -> onProgress() }
             addEndListener { _, canceled, _, _ -> if (!canceled) finishDrawer(open, focus) }
             start()
@@ -172,9 +226,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun onProgress() {
-        val p = (1f - drawer.translationY / root.height.coerceAtLeast(1)).coerceIn(0f, 1f)
+        val p = progress()
         home.alpha = 1f - p; home.scaleX = 1f - 0.06f * p; home.scaleY = 1f - 0.06f * p
+        if (prefs.blur) {
+            val r = ((p * dp(24)) / 4).toInt() * 4      // blur progresif, diquantisasi agar hemat GPU
+            if (r != lastBlur) { lastBlur = r; setBlurRadius(r) }
+        }
     }
+
+    private fun setBlurRadius(r: Int) { try { window.setBackgroundBlurRadius(r) } catch (_: Exception) {} }
 
     private fun finishDrawer(open: Boolean, focus: Boolean) {
         if (open) {
@@ -184,29 +244,70 @@ class MainActivity : ComponentActivity() {
             }
         } else {
             drawer.visibility = View.INVISIBLE
+            drawer.scaleX = 1f; drawer.scaleY = 1f; drawer.alpha = 1f
             query.setText(""); grid.scrollToPosition(0)
-            setBlur(false)
+            lastBlur = 0; setBlurRadius(0)
         }
     }
 
     private fun hideIme() { WindowCompat.getInsetsController(window, root).hide(WindowInsetsCompat.Type.ime()) }
 
-    private fun setBlur(on: Boolean) {
-        try { window.setBackgroundBlurRadius(if (on && prefs.blur) dp(28) else 0) } catch (_: Exception) {}
+    private fun canDrag(dy: Float): Boolean =
+        if (!drawerOpen) dy < 0 && !favorites.canScrollVertically(1) else dy > 0 && !grid.canScrollVertically(-1)
+
+    /** 0 = tidak ditangani, 1 = drag baru mulai, 2 = drag berjalan/selesai (dikonsumsi). */
+    private fun handleDrag(ev: MotionEvent): Int {
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = ev.x; downY = ev.y; dragging = false
+                vt?.recycle(); vt = VelocityTracker.obtain().also { it.addMovement(ev) }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                vt?.addMovement(ev)
+                val dy = ev.y - downY; val dx = ev.x - downX
+                if (!dragging) {
+                    val slop = ViewConfiguration.get(this).scaledTouchSlop * 2
+                    if (abs(dy) > slop && abs(dy) > abs(dx) * 1.5f && canDrag(dy)) {
+                        dragging = true; dragStartDy = dy
+                        drawerAnim?.cancel(); trans0 = drawer.translationY
+                        drawer.visibility = View.VISIBLE
+                        if (drawerOpen) hideIme()
+                        return 1
+                    }
+                    return 0
+                }
+                drawer.translationY = (trans0 + dy - dragStartDy).coerceIn(0f, root.height.toFloat())
+                onProgress()
+                return 2
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                val was = dragging; dragging = false
+                val t = vt; vt = null
+                if (was && t != null) {
+                    t.computeCurrentVelocity(1000)
+                    val vy = t.yVelocity; t.recycle()
+                    val open = when {
+                        vy < -900f -> true
+                        vy > 900f -> false
+                        else -> progress() > 0.5f
+                    }
+                    if (open != drawerOpen) root.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                    animateDrawer(open, velocity = vy)
+                    return 2
+                }
+                t?.recycle()
+            }
+        }
+        return 0
     }
 
-    // ---------- Gestur ----------
+    // ---------- Gestur lain ----------
     private val detector by lazy {
         GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, vx: Float, vy: Float): Boolean {
-                if (!prefs.gestures || e1 == null) return false
+                if (!prefs.gestures || e1 == null || drawerOpen) return false
                 val dx = e2.x - e1.x; val dy = e2.y - e1.y
-                if (abs(dy) < abs(dx) * 1.5f || abs(dy) < dp(80)) return false
-                when {
-                    !drawerOpen && dy < 0 && vy < -600 -> animateDrawer(open = true)
-                    !drawerOpen && dy > 0 && vy > 600 -> animateDrawer(open = true, focus = true)
-                    drawerOpen && dy > 0 && vy > 600 && !grid.canScrollVertically(-1) -> animateDrawer(open = false)
-                }
+                if (dy > dp(80) && dy > abs(dx) * 1.5f && vy > 700) animateDrawer(open = true, focus = true)   // swipe down = cari
                 return false
             }
             override fun onLongPress(e: MotionEvent) {
@@ -224,6 +325,16 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (prefs.gestures) {
+            when (handleDrag(ev)) {
+                1 -> {
+                    val c = MotionEvent.obtain(ev).apply { action = MotionEvent.ACTION_CANCEL }
+                    super.dispatchTouchEvent(c); detector.onTouchEvent(c); c.recycle()
+                    return true
+                }
+                2 -> return true
+            }
+        }
         detector.onTouchEvent(ev)
         return super.dispatchTouchEvent(ev)
     }

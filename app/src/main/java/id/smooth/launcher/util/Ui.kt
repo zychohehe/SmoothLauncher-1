@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import androidx.core.graphics.ColorUtils
 import android.provider.Settings
 import id.smooth.launcher.data.Prefs
 
@@ -27,10 +28,15 @@ object Palette {
     fun hint(d: Boolean) = if (d) 0x99FFFFFF.toInt() else 0x801C1C1E.toInt()
 }
 
+private fun lighten(c: Int, f: Float): Int {
+    val rgb = ColorUtils.blendARGB(c or 0xFF000000.toInt(), Color.WHITE, f)
+    return Color.argb(Color.alpha(c), Color.red(rgb), Color.green(rgb), Color.blue(rgb))
+}
+
+/** Panel kaca: gradasi halus (sorotan di atas) + garis tepi tipis. */
 fun glass(c: Context, color: Int, radiusDp: Float, topOnly: Boolean = false): GradientDrawable =
-    GradientDrawable().apply {
-        setColor(color)
+    GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(lighten(color, 0.14f), color)).apply {
         val r = c.dpf(radiusDp)
         if (topOnly) cornerRadii = floatArrayOf(r, r, r, r, 0f, 0f, 0f, 0f) else cornerRadius = r
-        setStroke(c.dp(1).coerceAtLeast(1), 0x26FFFFFF)
+        setStroke(c.dp(1).coerceAtLeast(1), 0x33FFFFFF)
     }

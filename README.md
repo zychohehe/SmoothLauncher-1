@@ -8,6 +8,9 @@ Launcher Android native (Kotlin, Views + RecyclerView) — Android 16 (minSdk 36
 - Release tanpa signing menghasilkan `app-release-unsigned.apk`.
 - Setelah install: Pengaturan → Aplikasi default → Aplikasi Home → Smooth Launcher.
 
+## Pembaruan 1.1.0
+Drag laci mengikuti jari + spring berdasarkan kecepatan, blur progresif, transisi buka/tutup aplikasi ala iOS (home zoom keluar saat aplikasi dibuka, zoom masuk + ikon berurutan saat kembali), ikon rounded-square seragam, panel kaca bergradasi, ikon pencarian, grabber, kartu di Pengaturan.
+
 ## Fitur yang diimplementasikan
 Home (jam/tanggal via TextClock tanpa polling, search bar, grid Home, Dock maks 5), laci aplikasi (ikon asli,
 pencarian instan, urut abjad, kolom kustom, sembunyikan aplikasi, pembaruan via LauncherApps.Callback + cache),
